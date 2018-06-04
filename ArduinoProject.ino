@@ -3,6 +3,7 @@
 #include <Wire.h>
 
 #include "SD_card.h"
+#include "I2C_my_api.h"
 #include "MPU6050.h"
 #include "on_error.h"
 #include "button_state_machine.h"
@@ -34,7 +35,8 @@ void print_via_serial(const String &msg)
 File file;
 long t_next;
 
-void setup() {
+void setup()
+{
   #if DEBUG_VIA_SERIAL
     Serial.begin(9600);
     while (!Serial) {}
@@ -59,47 +61,16 @@ void setup() {
     on_error("Could not initialize MPU6050.", DEBUG_VIA_SERIAL, error_log_file, &file, LED_PIN);
 
   //
-  if(!open_new_file_with_number_for_writing(&file, output_filename_head, output_filename_extension))
-  {
-    on_error("Could not open new output file for writing.", DEBUG_VIA_SERIAL, 
-             error_log_file, &file, LED_PIN);
-  }
-  print_via_serial(String("Opened file ")+file.name()+"\n");
-
-  //
   print_via_serial("Setup done.\n");
   t_next = millis() + sampling_period;
 }
 
-///////////////////////////////////////////////////////////////////////////////////
-/*
-  char dataAcce[6];
-  char dataGyro[6];
-  int count = 0;
-  long t0, dt;
-
-  void readMPU6050(const int reg, const int byteCount, char *dataBuffer) {
-    Wire.beginTransmission(MPU6050_ADDR);
-    Wire.write(reg);
-    if(Wire.endTransmission() != 0) {
-        #if DEBUG_VIA_SERIAL
-            error_msg = "I2C transmission error!";
-        #endif
-        on_error("");
-    }
-    if(Wire.requestFrom(MPU6050_ADDR, byteCount) != byteCount) {
-        #if DEBUG_VIA_SERIAL
-            error_msg = "I2C request error!";
-        #endif
-        on_error("");
-    }
-    for(int i=0; i<byteCount; i++)
-        dataBuffer[i] = Wire.read();
-  }
-*/
-////////
+//////////////////////////////////////////////////////////////////////
 
 long t;
+bool to_measure = false;
+char data_accel[6];
+char data_gyro[6];
 
 void loop()
 {
@@ -111,67 +82,62 @@ void loop()
   while(millis() < t_next) {}
   
   //
-  byte s = button_state_machine();
-  bool to_measure = (s == 10 || s == 11 || s == 12);
-  
-  digitalWrite(LED_PIN, to_measure ? LOW : HIGH);
-  
-  t = millis();
-  
+  byte action = button_state_machine();
+  if(action == 1) //start measurement
+  {
+    to_measure = true;
+    digitalWrite(LED_PIN, LOW);
+    
+    // open output file
+    if(!open_new_file_with_number_for_writing(&file, output_filename_head, output_filename_extension))
+    {
+      on_error("Could not open new output file for writing.", DEBUG_VIA_SERIAL, 
+               error_log_file, &file, LED_PIN);
+    }
+    print_via_serial(String("Opened file ")+file.name()+"\n");
+  }
+  else if(action == 0) //end measurement
+  {
+    to_measure = false;
+    digitalWrite(LED_PIN, HIGH);
+    
+    // close output file
+    file.close();
+    print_via_serial("File closed.\n");
+  }
+  else 
+  {
+    if(to_measure)
+    {
+      // perform measurement
+      t = millis();
+            
+      if(!I2C_read_bytes(MPU6050_ADDR, 0x38, 6, data_accel))
+      {
+        on_error("Error in reading data from MPU6050.", DEBUG_VIA_SERIAL, 
+                  error_log_file, &file, LED_PIN);
+      }
+      
+      if(!I2C_read_bytes(MPU6050_ADDR, 0x43, 6, data_gyro))
+      {
+        on_error("Error in reading data from MPU6050.", DEBUG_VIA_SERIAL, 
+                  error_log_file, &file, LED_PIN);
+      }
+        
+      // write to output file  
+      short tt = short(t & 0xffff);
+      file.write(char(tt >> 8));
+      file.write(char(tt & 0xff));
+
+      file.write(data_accel, 6);
+      file.write(data_gyro, 6);
+      
+      file.flush();
+    }
+  }
   
   //
   t_next += sampling_period;
   while(t_next < millis())
     t_next += sampling_period;
-  
-
-  /*
-    if(count >= 100) {
-        #if DEBUG_VIA_SERIAL
-            Serial.println("done");
-        #endif
-
-        #if WRITE_TO_FILE
-            file.close();
-        #endif
-
-        while(true) {}
-    }
-
-    ///
-    t0 = millis();
-
-    // read accelerometer data
-    readMPU6050(0x3B, 6, dataAcce);
-
-    // read gyroscope data
-    readMPU6050(0x43, 6, dataGyro);
-
-    // write to file
-    #if WRITE_TO_FILE
-        for(int i=0; i<6; i++) {
-            file.print(dataAcce[i]);
-        }
-        for(int i=0; i<6; i++) {
-            file.print(dataGyro[i]);
-        }
-        file.flush();
-    #endif
-
-    //
-    dt = millis() - t0;
-
-    /// print data
-    #if DEBUG_VIA_SERIAL
-        Serial.print("dt: ");
-        Serial.println(dt);
-
-    #endif
-*/
 }
-
-// how to make sure the sampling rate?  timer?
-
-
-// when to close the file?  button?
-
