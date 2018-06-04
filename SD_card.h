@@ -26,7 +26,7 @@ bool open_new_file_for_writing(File *file, const char *filename);
 //Returns false if the file already exists or cannot be created for writing.
 
 bool open_new_file_with_number_for_writing(File *file, 
-                                                  const String &filename_head, const String &filename_extension);
+                                           const String &filename_head, const String &filename_extension);
 //Create a new file named <filename_head>_<x>.<filename_extension>" for writing, where x is a number.
 
 bool remove_file_if_exist(const char *filename);

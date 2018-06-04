@@ -1,22 +1,26 @@
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
-
-
-/********* settings ***********/
-#define DEBUG_VIA_SERIAL 1
-//const bool write_to_file = true;
-//#define FILENAME "test02.dat"
-#define LED_PIN 9
-/********* end of settings *********/
-
 #include "SD_card.h"
 #include "MPU6050.h"
 #include "on_error.h"
 
-File file;
 
-//// initializations ////////////////////////////////////////////////////////////
+/********* settings ***********/
+#define DEBUG_VIA_SERIAL 1
+
+const bool to_write_file = true;
+
+#define LED_PIN 9  //LOW --> ON
+
+const String output_filename_head = "test";
+const String output_filename_extension = "dat";
+
+const char *error_log_file = "error_log.txt";
+/********* end of settings *********/
+
+
+File file;
 
 void setup() {
   #if DEBUG_VIA_SERIAL
@@ -28,43 +32,50 @@ void setup() {
   if(LED_PIN >= 0)
   {
     pinMode(LED_PIN, OUTPUT);
-    digitalWrite(LED_PIN, LOW);
+    digitalWrite(LED_PIN, HIGH);
   }
     
   //
   if(!init_SD_card())
-    on_error("Failed to initialize SD card.", DEBUG_VIA_SERIAL, "", file, LED_PIN);
+    on_error("Failed to initialize SD card.", DEBUG_VIA_SERIAL, "", &file, LED_PIN);
   
-  if(!remove_file_if_exist("error_log.txt"))
-    on_error("Failed to initialize SD card.", DEBUG_VIA_SERIAL, "", file, LED_PIN);
+  if(!remove_file_if_exist(error_log_file))
+    on_error("Failed to initialize SD card.", DEBUG_VIA_SERIAL, "", &file, LED_PIN);
   
   //
   Wire.begin(); // I2C
-  /*
-  if(!init_MPU6050(false))
-  {
-    on_error("Failed to initialize MPU6050.", DEBUG_VIA_SERIAL, "", file, LED_PIN);
-  }
-  */
   
-  on_error("test error message", DEBUG_VIA_SERIAL, "", file, LED_PIN);
-    /*
-  
-    
-  if(write_to_file)
-    open_file_for_appending(FILENAME);
-  
-  
-  
-    
-     */   
   #if DEBUG_VIA_SERIAL
-    Serial.println("Initialization done.");
+    Serial.print("Initializing MPU6050... ");
   #endif
-    
-} //setup()
-
-
+  if(!init_MPU6050(false))
+    on_error("Failed to initialize MPU6050.", DEBUG_VIA_SERIAL, 
+             error_log_file, &file, LED_PIN);
+  #if DEBUG_VIA_SERIAL
+    Serial.println("done");
+  #endif
+  
+  //
+  if(to_write_file)
+  {
+    if(!open_new_file_with_number_for_writing(&file, output_filename_head, 
+                                              output_filename_extension))
+    {
+      on_error("Failed to open output file for writing.", DEBUG_VIA_SERIAL, 
+               error_log_file, &file, LED_PIN);
+    }
+    #if DEBUG_VIA_SERIAL
+      Serial.println(String("Opened file \"")+file.name()+"\".");
+    #endif
+  }
+  
+  //
+  #if DEBUG_VIA_SERIAL
+    Serial.println("Setup done.");
+  #endif
+  if(LED_PIN >= 0)
+    digitalWrite(LED_PIN, LOW); //turn on LED
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
 /*
