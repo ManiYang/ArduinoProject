@@ -2,87 +2,74 @@
 #include <SD.h>
 #include <Wire.h>
 
+#include "SD_card.h"
+#include "MPU6050.h"
+#include "on_error.h"
+#include "button_state_machine.h"
+
 
 /********* settings ***********/
 #define DEBUG_VIA_SERIAL 1
-//const bool write_to_file = true;
-//#define FILENAME "test02.dat"
-//#define MPU6050_ADDR 0x68
+
+const bool to_write_file = true;
+const String output_filename_head = "test";
+const String output_filename_extension = "dat";
+
+int sampling_period = 100; //(ms)
+
+#define LED_PIN 9   // LOW --> ON
+byte button_pin = 8;  //pressed --> LOW
+
+const char *error_log_file = "error_log.txt";
 /********* end of settings *********/
 
 
-//#include "on_error.h"
-#include "SD_card.h"
-
+void print_via_serial(const String &msg)
+{
+  #if DEBUG_VIA_SERIAL
+    Serial.print(msg);
+  #endif
+}
 
 File file;
-
-//// initializations ////////////////////////////////////////////////////////////
-/*
-  inline void initMPU6050() {
-    // exit sleep mode and disable temperature sensor
-    Wire.beginTransmission(MPU6050_ADDR);
-    Wire.write(0x6B);
-    Wire.write(0x08);
-    //Wire.write(0x00);
-    if(Wire.endTransmission() != 0) {
-        #if DEBUG_VIA_SERIAL
-            error_msg = "I2C transmission error in initMPU6050()!";
-        #endif
-        on_error("");
-    }
-
-    // set sampling rate divider to 7
-    Wire.beginTransmission(MPU6050_ADDR);
-    Wire.write(0x19);
-    Wire.write(0x07);
-    if(Wire.endTransmission() != 0) {
-        #if DEBUG_VIA_SERIAL
-            error_msg = "I2C transmission error in initMPU6050()!";
-        #endif
-        on_error("");
-    }
-  }
-*/
+long t_next;
 
 void setup() {
-#if DEBUG_VIA_SERIAL
-  Serial.begin(9600);
-  while (!Serial) {}
-#endif
+  #if DEBUG_VIA_SERIAL
+    Serial.begin(9600);
+    while (!Serial) {}
+  #endif
 
   //
-  init_SD_card();
-  if (!open_file_for_appending(&file, "test10.txt"))
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);
+   
+  pinMode(button_pin, INPUT_PULLUP);
+  
+  //
+  if(!init_SD_card())
+    on_error("Could not initialize SD card.", DEBUG_VIA_SERIAL, "", &file, LED_PIN);
+  
+  if(!remove_file_if_exist(error_log_file))
+    on_error(String("Could not remove ")+error_log_file, DEBUG_VIA_SERIAL, "", &file, LED_PIN);
+  
+  //
+  Wire.begin(); //I2C
+  if(!init_MPU6050(false))
+    on_error("Could not initialize MPU6050.", DEBUG_VIA_SERIAL, error_log_file, &file, LED_PIN);
+
+  //
+  if(!open_new_file_with_number_for_writing(&file, output_filename_head, output_filename_extension))
   {
-    Serial.println("Could not open file for appending.");
-    while (true) {
-      delay(100);
-    }
+    on_error("Could not open new output file for writing.", DEBUG_VIA_SERIAL, 
+             error_log_file, &file, LED_PIN);
   }
-  file.print("testing\n");
-  file.close();
+  print_via_serial(String("Opened file ")+file.name()+"\n");
 
-
-  /*
-
-
-    if(write_to_file)
-    open_file_for_appending(FILENAME);
-
-
-
-
-    Wire.begin(); //I2C init.
-    initMPU6050();
-
-    #if DEBUG_VIA_SERIAL
-      Serial.println("Initialization done.");
-    #endif
-  */
-} //setup()
-
-
+  //
+  print_via_serial("Setup done.\n");
+  t_next = millis() + sampling_period;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
 /*
@@ -112,7 +99,31 @@ void setup() {
 */
 ////////
 
-void loop() {
+long t;
+
+void loop()
+{
+  // wait until millis() >= t_next
+  long dt = millis() - t_next - 2;
+  if(dt > 0)
+    delay(dt);
+  
+  while(millis() < t_next) {}
+  
+  //
+  byte s = button_state_machine();
+  bool to_measure = (s == 10 || s == 11 || s == 12);
+  
+  digitalWrite(LED_PIN, to_measure ? LOW : HIGH);
+  
+  t = millis();
+  
+  
+  //
+  t_next += sampling_period;
+  while(t_next < millis())
+    t_next += sampling_period;
+  
 
   /*
     if(count >= 100) {
@@ -156,15 +167,11 @@ void loop() {
         Serial.println(dt);
 
     #endif
-
-    ///
-    count++;  */
-  delay(100);
+*/
 }
 
 // how to make sure the sampling rate?  timer?
 
-// error signal? LED?
 
 // when to close the file?  button?
 

@@ -1,5 +1,7 @@
 #include "button_state_machine.h"
 
+#include <Arduino.h>
+
 extern int sampling_period; //(ms)
 extern byte button_pin;
 
@@ -8,13 +10,13 @@ byte button_state_machine()
 {
   static byte button_state = 1;
   static int count = 0;
-    
+  
   bool pressed = digitalRead(button_pin) == LOW;
   switch(button_state)
   {
     case 0:
       count++;
-      if(count*sampling_period > 500) //enter state 1 after being in state 0 for 500 ms
+      if(count*sampling_period > 900) //enter state 1 after being in state 0 for 500 ms
         button_state = 1;
       break;
       
@@ -35,7 +37,7 @@ byte button_state_machine()
       
     case 10:
       count++;
-      if(count*sampling_period > 500) //enter state 11 after being in state 10 for 500 ms
+      if(count*sampling_period > 900) //enter state 11 after being in state 10 for 500 ms
         button_state = 11;
       break;
       
