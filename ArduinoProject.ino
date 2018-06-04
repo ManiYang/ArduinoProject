@@ -7,13 +7,12 @@
 #define DEBUG_VIA_SERIAL 1
 //const bool write_to_file = true;
 //#define FILENAME "test02.dat"
-
+#define LED_PIN 9
 /********* end of settings *********/
 
-
-#include "on_error.h"
 #include "SD_card.h"
 #include "MPU6050.h"
+#include "on_error.h"
 
 File file;
 
@@ -26,20 +25,29 @@ void setup() {
   #endif
   
   //
-  if(!init_SD_card())
+  if(LED_PIN >= 0)
   {
-    
+    pinMode(LED_PIN, OUTPUT);
+    digitalWrite(LED_PIN, LOW);
   }
-
+    
+  //
+  if(!init_SD_card())
+    on_error("Failed to initialize SD card.", DEBUG_VIA_SERIAL, "", file, LED_PIN);
+  
+  if(!remove_file_if_exist("error_log.txt"))
+    on_error("Failed to initialize SD card.", DEBUG_VIA_SERIAL, "", file, LED_PIN);
+  
   //
   Wire.begin(); // I2C
+  /*
   if(!init_MPU6050(false))
   {
-    
+    on_error("Failed to initialize MPU6050.", DEBUG_VIA_SERIAL, "", file, LED_PIN);
   }
+  */
   
-  
-  
+  on_error("test error message", DEBUG_VIA_SERIAL, "", file, LED_PIN);
     /*
   
     
@@ -49,11 +57,11 @@ void setup() {
   
   
     
-        
-    #if DEBUG_VIA_SERIAL
-        Serial.println("Initialization done.");
-    #endif
-    */
+     */   
+  #if DEBUG_VIA_SERIAL
+    Serial.println("Initialization done.");
+  #endif
+    
 } //setup()
 
 

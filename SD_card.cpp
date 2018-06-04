@@ -44,3 +44,12 @@ bool open_new_file_with_number_for_writing(File *file,
   else
     return open_file_for_appending(file, fname.c_str());
 }
+
+bool remove_file_if_exist(const char *filename)
+//Returns true if `filename` does not exist.
+{
+  if(SD.exists(filename))
+    return SD.remove(filename);
+  else
+    return true;
+}
