@@ -1,90 +1,97 @@
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
-#include "SD_card.h"
-#include "MPU6050.h"
-#include "on_error.h"
 
 
 /********* settings ***********/
 #define DEBUG_VIA_SERIAL 1
-
-const bool to_write_file = true;
-
-#define LED_PIN 9  //LOW --> ON
-
-const String output_filename_head = "test";
-const String output_filename_extension = "dat";
-
-const char *error_log_file = "error_log.txt";
+//const bool write_to_file = true;
+//#define FILENAME "test02.dat"
+//#define MPU6050_ADDR 0x68
 /********* end of settings *********/
+
+
+//#include "on_error.h"
+#include "SD_card.h"
 
 
 File file;
 
-void setup() {
-  #if DEBUG_VIA_SERIAL
-    Serial.begin(9600);
-    while(!Serial) {}
-  #endif
-  
-  //
-  if(LED_PIN >= 0)
-  {
-    pinMode(LED_PIN, OUTPUT);
-    digitalWrite(LED_PIN, HIGH);
-  }
-    
-  //
-  if(!init_SD_card())
-    on_error("Failed to initialize SD card.", DEBUG_VIA_SERIAL, "", &file, LED_PIN);
-  
-  if(!remove_file_if_exist(error_log_file))
-    on_error("Failed to initialize SD card.", DEBUG_VIA_SERIAL, "", &file, LED_PIN);
-  
-  //
-  Wire.begin(); // I2C
-  
-  #if DEBUG_VIA_SERIAL
-    Serial.print("Initializing MPU6050... ");
-  #endif
-  if(!init_MPU6050(false))
-    on_error("Failed to initialize MPU6050.", DEBUG_VIA_SERIAL, 
-             error_log_file, &file, LED_PIN);
-  #if DEBUG_VIA_SERIAL
-    Serial.println("done");
-  #endif
-  
-  //
-  if(to_write_file)
-  {
-    if(!open_new_file_with_number_for_writing(&file, output_filename_head, 
-                                              output_filename_extension))
-    {
-      on_error("Failed to open output file for writing.", DEBUG_VIA_SERIAL, 
-               error_log_file, &file, LED_PIN);
+//// initializations ////////////////////////////////////////////////////////////
+/*
+  inline void initMPU6050() {
+    // exit sleep mode and disable temperature sensor
+    Wire.beginTransmission(MPU6050_ADDR);
+    Wire.write(0x6B);
+    Wire.write(0x08);
+    //Wire.write(0x00);
+    if(Wire.endTransmission() != 0) {
+        #if DEBUG_VIA_SERIAL
+            error_msg = "I2C transmission error in initMPU6050()!";
+        #endif
+        on_error("");
     }
-    #if DEBUG_VIA_SERIAL
-      Serial.println(String("Opened file \"")+file.name()+"\".");
-    #endif
+
+    // set sampling rate divider to 7
+    Wire.beginTransmission(MPU6050_ADDR);
+    Wire.write(0x19);
+    Wire.write(0x07);
+    if(Wire.endTransmission() != 0) {
+        #if DEBUG_VIA_SERIAL
+            error_msg = "I2C transmission error in initMPU6050()!";
+        #endif
+        on_error("");
+    }
   }
-  
+*/
+
+void setup() {
+#if DEBUG_VIA_SERIAL
+  Serial.begin(9600);
+  while (!Serial) {}
+#endif
+
   //
-  #if DEBUG_VIA_SERIAL
-    Serial.println("Setup done.");
-  #endif
-  if(LED_PIN >= 0)
-    digitalWrite(LED_PIN, LOW); //turn on LED
-}
+  init_SD_card();
+  if (!open_file_for_appending(&file, "test10.txt"))
+  {
+    Serial.println("Could not open file for appending.");
+    while (true) {
+      delay(100);
+    }
+  }
+  file.print("testing\n");
+  file.close();
+
+
+  /*
+
+
+    if(write_to_file)
+    open_file_for_appending(FILENAME);
+
+
+
+
+    Wire.begin(); //I2C init.
+    initMPU6050();
+
+    #if DEBUG_VIA_SERIAL
+      Serial.println("Initialization done.");
+    #endif
+  */
+} //setup()
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////
 /*
-char dataAcce[6];
-char dataGyro[6];
-int count = 0;
-long t0, dt;
+  char dataAcce[6];
+  char dataGyro[6];
+  int count = 0;
+  long t0, dt;
 
-void readMPU6050(const int reg, const int byteCount, char *dataBuffer) {
+  void readMPU6050(const int reg, const int byteCount, char *dataBuffer) {
     Wire.beginTransmission(MPU6050_ADDR);
     Wire.write(reg);
     if(Wire.endTransmission() != 0) {
@@ -99,20 +106,20 @@ void readMPU6050(const int reg, const int byteCount, char *dataBuffer) {
         #endif
         on_error("");
     }
-    for(int i=0; i<byteCount; i++) 
+    for(int i=0; i<byteCount; i++)
         dataBuffer[i] = Wire.read();
-}
+  }
 */
 ////////
 
 void loop() {
-    
+
   /*
     if(count >= 100) {
         #if DEBUG_VIA_SERIAL
             Serial.println("done");
         #endif
-            
+
         #if WRITE_TO_FILE
             file.close();
         #endif
@@ -122,13 +129,13 @@ void loop() {
 
     ///
     t0 = millis();
-        
+
     // read accelerometer data
     readMPU6050(0x3B, 6, dataAcce);
-    
+
     // read gyroscope data
     readMPU6050(0x43, 6, dataGyro);
-          
+
     // write to file
     #if WRITE_TO_FILE
         for(int i=0; i<6; i++) {
@@ -147,12 +154,12 @@ void loop() {
     #if DEBUG_VIA_SERIAL
         Serial.print("dt: ");
         Serial.println(dt);
-     
+
     #endif
-        
+
     ///
     count++;  */
-    delay(100);
+  delay(100);
 }
 
 // how to make sure the sampling rate?  timer?
