@@ -1,14 +1,17 @@
+#include <Arduino.h>
 #include "button_state_machine.h"
 
-#include <Arduino.h>
+//#define USE_BUTTON
+
+#ifdef USE_BUTTON
 
 extern int sampling_period; //(ms)
 extern byte button_pin;
 
-byte button_state_machine()
-//Returns 1 if entered into state 10.
-//Returns 0 if entered into state 0.
-//Returns -1 otherwise.
+char button_state_machine()
+//Returns '1' if entered into state 10.
+//Returns '0' if entered into state 0.
+//Returns '\0' otherwise.
 {
   static byte button_state = 1;
   static int count = 0;
@@ -32,7 +35,7 @@ byte button_state_machine()
       {
         button_state = 10;
         count = 0;
-        return 1; ////
+        return '1'; ////
       }
       else
         button_state = 1;
@@ -54,7 +57,7 @@ byte button_state_machine()
       {
         button_state = 0;
         count = 0;
-        return 0; ////
+        return '0'; ////
       }
       else
         button_state = 11;
@@ -64,5 +67,7 @@ byte button_state_machine()
       break;
   }
   
-  return -1;
+  return '\0';
 }
+
+#endif

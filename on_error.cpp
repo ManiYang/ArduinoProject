@@ -2,7 +2,10 @@
 
 #include <Arduino.h>
 #include <SD.h>
+#include <SoftwareSerial.h>
 #include "on_error.h"
+
+extern SoftwareSerial BT;
 
 void on_error(String error_msg, bool print_msg_via_serial, 
               const char *log_file, File *file,
@@ -15,6 +18,9 @@ void on_error(String error_msg, bool print_msg_via_serial,
   if(print_msg_via_serial)
     Serial.println("\n! "+error_msg);
    
+  if(BT.isListening())
+    BT.println("Error. "+error_msg);
+  
   if(strlen(log_file) > 0)
   {
     file->close();  
