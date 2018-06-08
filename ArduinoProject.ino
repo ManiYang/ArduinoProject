@@ -11,7 +11,7 @@
 
 
 /********* settings ***********/
-#define DEBUG_VIA_SERIAL 1
+#define DEBUG_VIA_SERIAL 0
 
 const bool to_write_file = true;
 const String output_filename_head = "test";
