@@ -11,9 +11,10 @@
 
 
 /********* settings ***********/
-#define DEBUG_VIA_SERIAL 0
+#define DEBUG_VIA_SERIAL 1
+#define PRINT_DATA_VIA_SERIAL 1  //effective only if DEBUG_VIA_SERIAL is 1
 
-const bool to_write_file = true;
+#define WRITE_DATA_TO_FILE 0
 const String output_filename_head = "test";
 const String output_filename_extension = "dat";
 
@@ -45,7 +46,7 @@ long t_next;
 
 void setup()
 {
-  #if DEBUG_VIA_SERIAL
+  #if DEBUG_VIA_SERIAL 
     Serial.begin(9600);
     while (!Serial) {}
   #endif
@@ -62,7 +63,7 @@ void setup()
   // SD card
   if(!init_SD_card())
     on_error("Could not initialize SD card.", DEBUG_VIA_SERIAL, "", &file, LED_PIN);
-  
+
   if(!remove_file_if_exist(error_log_file))
     on_error(String("Could not remove ")+error_log_file, DEBUG_VIA_SERIAL, "", &file, LED_PIN);
   
@@ -108,16 +109,18 @@ void loop()
       measuring = true;
 
       // open output file
-      if(!open_new_file_with_number_for_writing(&file, output_filename_head, output_filename_extension))
-      {
-        on_error("Could not open new output file for writing.", DEBUG_VIA_SERIAL, 
-                 error_log_file, &file, LED_PIN);
-      }
+      #if WRITE_DATA_TO_FILE
+        if(!open_new_file_with_number_for_writing(&file, output_filename_head, output_filename_extension))
+        {
+          on_error("Could not open new output file for writing.", DEBUG_VIA_SERIAL, 
+                   error_log_file, &file, LED_PIN);
+        }
+      
+        print_via_serial(String("Opened file ")+file.name()+"\n");
+        BT.println(String("Output file: ")+file.name());
+      #endif
 
-      //
-      print_via_serial(String("Opened file ")+file.name()+"\n");
       BT.println("Starting measurement.");
-      BT.println(String("Output file: ")+file.name());
       //digitalWrite(LED_PIN, LOW);
     }
   }
@@ -128,10 +131,11 @@ void loop()
       measuring = false;
 
       // close output file
-      file.close();
-
-      //
-      print_via_serial("File closed.\n");
+      #if WRITE_DATA_TO_FILE
+        file.close(); 
+        print_via_serial("File closed.\n");
+      #endif
+      
       BT.println("Stopped measurement.");
       //digitalWrite(LED_PIN, HIGH);
     }
@@ -156,14 +160,25 @@ void loop()
       }
         
       // write to output file  
-      short tt = short(t & 0xffff);
-      file.write(char(tt >> 8));
-      file.write(char(tt & 0xff));
+      #if WRITE_DATA_TO_FILE
+        short tt = short(t & 0xffff);
+        file.write(char(tt >> 8));
+        file.write(char(tt & 0xff));
 
-      file.write(data_accel, 6);
-      file.write(data_gyro, 6);
+        file.write(data_accel, 6);
+        file.write(data_gyro, 6);
+
+        file.flush();
+      #endif
       
-      file.flush();
+      //
+      #if PRINT_DATA_VIA_SERIAL && DEBUG_VIA_SERIAL
+        //int v = (int(data_accel[0]) << 8) | data_accel[1];
+        int v = data_gyro[1];
+        //if(v > 0xfff) 
+        //  v -= 0x10000;
+        Serial.println(v);
+      #endif
     }
   }
   

@@ -15,7 +15,7 @@ bool init_MPU6050(bool enable_temperature_sensor)
   // set sampling rate divider to 7 (=> 1kHz)
   if(!I2C_write_byte(MPU6050_ADDR, 0x19, 0x07))
     return false;
-  
+   
   //
   return true;
 }
